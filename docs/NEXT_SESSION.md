@@ -30,7 +30,7 @@ WHERE THINGS STAND (as of 2026-11-06):
 - Rotations DONE 2026-11-05/06: Postiz API key (all consumers updated: ubuntuai
   ~/scripts/.social-draft.env, qdesk + qmac ~/.claude/secrets/postiz.env, qmac postiz-mcp.sh, n8n
   credential by Q); Telegram bot token (Q); SES SMTP — new IAM key for aiqso-postiz-ses active,
-  OLD key AKIA25BLQOYKT3FXMW22 is INACTIVE (not deleted). JWT_SECRET deliberately NOT rotated.
+  OLD key AKIA25BLQOYKT3FXMW22 DELETED 2026-11-06 01:47 CT. JWT_SECRET deliberately NOT rotated.
 - 16 channels. TikTok: aiqso_io + blastradiuspod (integration cmw4nhymc0004s04lo8oscmw4), both
   Sandbox → inbox (content_posting_method UPLOAD) only. TikTok dev app 7590200833132808248
   Production "AIQSO Publisher" re-submitted for review 2026-11-06 with all 6 scopes Postiz requests
@@ -53,7 +53,7 @@ NEXT STEPS (in order — each has a gate; stop and report if a gate fails):
 2. Verify post-restart scheduling health. Gate: n8n SocialPublish run of 2026-11-06 08:30 ET
    succeeded, AND the first queued post due 2026-11-09 17:30 UTC shows state PUBLISHED via
    GET /public/v1/posts (read back the platform URL).
-3. Delete the inactive SES key. Gate first: `aws iam get-access-key-last-used` on the NEW key shows
+3. ~~Delete the inactive SES key.~~ **DONE** — CloudTrail: DeleteAccessKey on AKIA25BLQOYKT3FXMW22 by `dunkin` 2026-11-06 01:47 CT (right after the 01:41 handoff). Gate verified 2026-11-06 07:55 UTC: new key AKIA25BLQOYKU2TKAZ57 last used 2026-11-06 03:38 UTC, ServiceName ses-smtp (before the delete); `list-access-keys` = exactly one Active key. Original step: Gate first: `aws iam get-access-key-last-used` on the NEW key shows
    ServiceName ses-smtp with a date after 2026-11-06 01:00 UTC; then delete AKIA25BLQOYKT3FXMW22;
    gate: `aws iam list-access-keys --user-name aiqso-postiz-ses` lists exactly one Active key.
 4. Backups. Gate: /backup-verify shows a successful PBS backup of CT 220 within 24h; add a nightly
