@@ -40,8 +40,7 @@ WHERE THINGS STAND (as of 2026-11-06):
   gpt-4.1 text, no picture, lastUrl seeded at EP4 (EP5 is the first that triggers). YouTube RSS is
   404 globally — do not use it.
 - Signatures (AIQSO, Blast Radius) and Sets (AIQSO brand, Blast Radius) exist.
-- Dirty/unpushed local state: ~/projects/aiqso-social has an UNCOMMITTED 1-line change to
-  config/channels.yaml (blast-radius tiktok id) on qdesk. This repo (postiz-app) is clean.
+- aiqso-social channels.yaml BR tiktok line committed (affbff6); TIKTOK_PRODUCTION.md now points here (step 8). This repo (postiz-app) is clean.
 - Open PRs listed by gh for this repo are UPSTREAM gitroomhq PRs — not ours; ignore.
 - Related Odoo tasks (no dedicated Postiz project): #1234 rotate stale credentials (Backlog),
   #1246 video-class channels YouTube+TikTok, #1222 Postiz channel coverage.
@@ -49,7 +48,7 @@ WHERE THINGS STAND (as of 2026-11-06):
   were NOT upgraded or hardened in this round.
 
 NEXT STEPS (in order — each has a gate; stop and report if a gate fails):
-1. Commit + push aiqso-social config/channels.yaml (BR tiktok line) via branch/PR per repo norms.
+1. ~~Commit + push aiqso-social config/channels.yaml (BR tiktok line)~~ **DONE** — affbff6 on origin/main (2026-11-06 01:46 CT), `config/` clean (verified 2026-11-06 from the aiqso-events session). Original step:
    Gate: `git -C ~/projects/aiqso-social status --porcelain config/` empty and the line is on origin/main.
 2. Verify post-restart scheduling health. Gate: n8n SocialPublish run of 2026-11-06 08:30 ET
    succeeded, AND the first queued post due 2026-11-09 17:30 UTC shows state PUBLISHED via
