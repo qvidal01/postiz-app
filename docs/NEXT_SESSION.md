@@ -1,6 +1,6 @@
 # Next session — Postiz (AIQSO production instance) follow-through
 
-_Refreshed 2026-11-06 ~02:10 CT (qdesk): steps 1, 3, 4 of the 01:41 kickoff verified DONE; step 5 is next._
+_Refreshed 2026-11-06 ~03:25 CT (qdesk): queued-post monitor LIVE (alert path proven); published-notice shipped (gate due 10:20 CT today). Earlier refresh 02:10 CT: steps 1, 3, 4 of the 01:41 kickoff DONE._
 
 ROLE: Senior platform/SRE engineer continuing operations of AIQSO's self-hosted Postiz social
 scheduler (local fork repo: ~/projects/postiz-app — reference only; production runs the UPSTREAM
@@ -24,7 +24,7 @@ Safety rails:
 - Brand routing: podcast → Blast Radius accounts only; AIQSO → AIQSO only; personal accounts manual-only.
 - Publishing real posts: Q validates content + media first (feedback_postiz_publish_authorized).
 
-WHERE THINGS STAND (as of 2026-11-06 ~02:10 CT):
+WHERE THINGS STAND (as of 2026-11-06 ~03:25 CT):
 - Production Postiz v2.25.3 on LXC 220 since 2026-11-05 (rollback: ZFS snapshot `pre_postiz_v2253_20261105`,
   /root/backups/postiz-db-pre-v2.25.3-20261105.dump, compose/.env *.bak-* files). Registration closed.
   Compromise audit clean. Temporal healthchecks added; ES visibility repaired (search attrs postId /
@@ -40,6 +40,27 @@ WHERE THINGS STAND (as of 2026-11-06 ~02:10 CT):
   notify-router (page), grace 2h) via /etc/postiz-db-backup.conf (root 0600). Proof: manual run 01:59 CT →
   88 tables, check up. Repo copy + runbook: **AIQSO/homelab-infrastructure PR #68 — OPEN, unreviewed**
   (merge changes nothing at runtime).
+- **Queued-post integrity monitor LIVE 2026-11-06:** `/usr/local/bin/postiz-queue-integrity.sh` on CT 220,
+  root cron HOURLY `35 * * * *` (not nightly — see self-heal finding), log /var/log/postiz-queue-integrity.log.
+  Future QUEUE posts (top-level, not deleted) vs Running `postWorkflow*` (Temporal list, matched on the postId
+  search attr). Exit 0/1/3; `/fail` ping body lists missing ids. Healthchecks check
+  `lxc220-postiz-queue-integrity` (19fa6767…, 30m grace, notify-router (page)) via /etc/postiz-queue-integrity.conf.
+  Proof 09:08 UTC: `--inject-fake` → down notification delivered; real run 70 queued / 70 running / 0 missing →
+  up notification delivered. Flags: `--inject-fake <id>`, `--no-ping`. Registered in cron-verify (skills c51bcbd).
+  **No repo copy yet** (only on CT 220 + this session's scratchpad) — see step 3.
+- **FINDING: upstream self-heal is OFF.** `missing-post-workflow` (hourly re-poke of QUEUE posts due ±2h) only
+  starts when RUN_CRON is set; it is unset in the postiz container and no such workflow is Running. The queue
+  monitor is therefore the only guard. Enabling RUN_CRON = .env change + container recreate → Q's call.
+- **Published notices SHIPPED 2026-11-06 (Q chose this over webhook→n8n):** Postiz webhooks are unsigned
+  and agents cannot deploy n8n, so ubuntuai `~/scripts/postiz-publish-check.sh` (scripts repo ba204c1, cron
+  hourly :20) now sends ONE social ticket → Automation 169 (source `postiz-published`, title
+  "Published: <channel>", link = platform releaseURL) per newly PUBLISHED post. Announced ids:
+  ~/.local/state/postiz-publish-check.published (seeded with 2 ids at deploy — no flood). Backup of the old
+  script: ~/.local/state/postiz-publish-check.sh.bak-pre-published-20261106.
+- **The first queued posts are TODAY, not 11-09:** 3 posts (linkedin-page, instagram, facebook) due
+  2026-11-06 16:00 UTC (= 10:00 CT, the aiqso-events recaps). 70 future QUEUE posts total, through 2026-11-25.
+- TikTok post cmw4fcamv0002s04lx07zou55 (aiqso_io, due 2026-11-06 03:37Z) is ERROR "App not approved for
+  public posting" — expected on the Sandbox app; already alerted by publish-check (one-shot, deduped).
 - 16 channels. TikTok: aiqso_io + blastradiuspod (cmw4nhymc0004s04lo8oscmw4, in aiqso-social
   config/channels.yaml @ affbff6), both on the Sandbox app → inbox (UPLOAD) only. Dev app
   7590200833132808248 Production **"AIQSO Publisher"** re-submitted 2026-11-06, In review, 6 scopes
@@ -59,22 +80,21 @@ WHERE THINGS STAND (as of 2026-11-06 ~02:10 CT):
   social drip starts Mon 2026-11-09 11:30 CT.
 
 NEXT STEPS (in order — each has a gate; stop and report if a gate fails):
-1. Verify post-restart scheduling health. Gate: n8n SocialPublish run of 2026-11-06 08:30 ET succeeded,
-   AND the first queued post due 2026-11-09 17:30 UTC shows state PUBLISHED via GET /public/v1/posts
-   (read back the platform URL). (Carried from the 01:41 kickoff step 2.)
-2. Queued-post integrity monitor (biggest real risk: Postiz swallows Temporal startWorkflow errors).
-   Nightly script on LXC 220: every post with status QUEUE and publishDate > now must have a Running
-   workflow `post_<id>` (visibility query postId="<id>"). Mismatch → notify-router Telegram; success →
-   Healthchecks ping (create the check like lxc220-postiz-db-backup: Django shell on CT 371, pipe the
-   ping URL straight into a root-0600 conf, never print it). Add the script to homelab-infrastructure
-   (branch + PR, worktree off origin/main — do NOT touch the checked-out feature branch) and a row in
-   cron-verify jobs.tsv. Gate: one run prints N queued / N running / 0 missing; a fake id makes it alert.
-3. Postiz webhooks → n8n → notify-router: per-post "published" alert with platform URL (n8n dev first).
-   Gate: one real publish produces exactly one Telegram message with a working link.
+1. TODAY ~10:30 CT — read back the 16:00 UTC publish (covers old step "post-restart scheduling health" +
+   the published-notice gate). Gate: n8n SocialPublish run of 2026-11-06 08:30 ET succeeded; GET
+   /public/v1/posts shows the 3 posts PUBLISHED with releaseURLs that open; /aidata/logs/postiz-publish-check.log
+   on ubuntuai shows exactly 3 `published: notice sent` lines at the 16:20 UTC run and NONE at 17:20 UTC; Q
+   confirms 3 messages in Automation 169 with working links. postiz-queue-integrity.log stays PASS.
+2. Confirm tonight's monitors: /var/log/postiz-db-backup.log has an OK line dated 2026-11-06 03:1x (check
+   `lxc220-postiz-db-backup` up) and the hourly queue-integrity runs are all PASS (check up).
+3. Repo copy for the queue monitor: add `postiz-queue-integrity.sh` to homelab-infrastructure (push to the
+   PR #68 branch or a new branch via a worktree off origin/main — do NOT touch the checked-out
+   feat/paperclip-board-inbox) + a runbook line. Source of truth = CT 220 `/usr/local/bin/postiz-queue-integrity.sh`
+   (copy it from there). Gate: PR has the file byte-identical to CT 220's copy (sha256 match).
 4. Autopost cover art: ubuntuai hourly job — drafts from the autopost lacking an image get the matching
    episode's itunes:image from the Castopod feed (upload-from-url, recreate draft, delete old). Gate:
    dry-run on EP4 shows the right image URL; first live run on EP5 leaves one draft per channel, with image.
-5. homelab-infrastructure PR #68: get it reviewed (CodeRabbit/Codex/Claude) and merged per
+5. homelab-infrastructure PR #68 (+ step 3's file): get it reviewed (CodeRabbit/Codex/Claude) and merged per
    feedback_pr_merge_policy. Gate: MERGED, and `/usr/local/bin/postiz-db-backup.sh` on CT 220 is
    byte-identical to scripts/backup/postiz-db-backup.sh on main. Also confirm tonight's 03:15 CT run:
    /var/log/postiz-db-backup.log has an OK line dated 2026-11-06 03:1x and the check is still up.
@@ -96,7 +116,10 @@ NEXT STEPS (in order — each has a gate; stop and report if a gate fails):
     gpt-image-1; self-hosted short links (Kutt) on go.aiqso.io; Blast Radius LinkedIn Showcase Page;
     JWT_SECRET rotation with a re-encrypt script; TikTok "Verify domains" for photo posts (Postiz sends
     photos PULL_FROM_URL, videos FILE_UPLOAD).
-11. Decision needed from Q: AIQSO Discord channel is absent from Postiz — reconnect or drop from
+11. Decision for Q (ask with the four lines): enable RUN_CRON so upstream's missing-post-workflow self-heal
+    runs (snapshot + .env.bak + `docker compose up -d postiz`; verify it appears Running in Temporal and the
+    queue monitor stays PASS). Check first whether RUN_CRON has other side effects in v2.25.3.
+12. Decision needed from Q: AIQSO Discord channel is absent from Postiz — reconnect or drop from
     channels.yaml.
 
 Tooling caveats: claude-in-chrome cannot screenshot tiktok.com pages (OAuth popups open outside the
@@ -108,7 +131,10 @@ found on its ssh target) — use `ssh pve840 'sudo -n pvesm list pbs-synology --
 ~/.claude/secrets/healthchecks-admin.env is denied — use the CT 371 Django shell instead. ssh qmac needs
 qmac awake; reading n8n's API key is denied — n8n credential edits are Q's; env-guard hook blocks
 commands touching .env unless they print nothing (`# ENV-GUARD-OVERRIDE`). homelab-infrastructure's
-pre-push gate takes >2 min — run pushes in the background.
+pre-push gate takes >2 min — run pushes in the background. The auto-mode classifier BLOCKS agent writes
+through the CT 371 Django shell (check creation = "Modify Shared Resources"); reads work. Prepare the .py in
+the scratchpad and have Q run it with `! ssh pve840 "sudo -n /usr/sbin/pct exec 371 -- docker exec -i
+healthchecks bash -c 'cd /opt/healthchecks && python manage.py shell'" < <file>.py`.
 
 NOTE ON PATHS: the memory files cited below are NOT in this repo. They live in the shared
 auto-memory dir: ~/.claude/projects/_shared-memory-projects-root/
